@@ -91,7 +91,7 @@ HANDLE GetMainThreadId(DWORD cPID)    //scan all threads and find main handler o
     {
         if (TE32.th32OwnerProcessID == cPID) {
             result = TE32.th32ThreadID;
-          
+            printf("Thread ID: %u\n", result);
         }
     }
     return OpenThread(READ_CONTROL | THREAD_QUERY_INFORMATION,FALSE,result);
@@ -107,7 +107,11 @@ int main()
     hprocess = OpenProcess(PROCESS_ALL_ACCESS, true, pid);
    
     tebBaseAddr = GetThreadStackTopAddress(hprocess, GetMainThreadId(pid));
-    printf("TEB BASE ADDR: %p",tebBaseAddr.TebBaseAddress);
-
+    printf("TEB BASE ADDR:   %p\n",tebBaseAddr.TebBaseAddress);
+    printf("TEB AFFINITY MASK:   %u\n", tebBaseAddr.AffinityMask);
+    printf("TEB PRIORITY:   %u\n", tebBaseAddr.Priority);
+    printf("TEB BASE PRIORITY:   %u\n", tebBaseAddr.BasePriority);
+    printf("TEB CLIENTID:  %u\n", tebBaseAddr.ClientId);
+      
     return 0;
 }
