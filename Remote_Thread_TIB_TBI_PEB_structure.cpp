@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <TlHelp32.h>
 //#include <winnt.h>
-//#include"C:\Users\ערש8\source\repos\processmemory\processmemory\main.h"
+//#include"main.h"
 typedef LONG NTSTATUS;
 typedef DWORD KPRIORITY;
 //typedef DWORD PPEB;
