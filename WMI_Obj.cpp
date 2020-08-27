@@ -11,30 +11,27 @@ int main(int argc, char** argv)
 {
     HRESULT hres;
 
-    // Step 1: --------------------------------------------------
-    // Initialize COM. ------------------------------------------
 
     hres = CoInitializeEx(0, COINIT_MULTITHREADED);
     if (FAILED(hres))
     {
         cout << "Failed to initialize COM library. Error code = 0x"
             << hex << hres << endl;
-        return 1;                  // Program has failed.
+        return 1;                
     }
 
-    // Step 2: --------------------------------------------------
-    // Set general COM security levels --------------------------
+  
 
     hres = CoInitializeSecurity(
         NULL,
-        -1,                          // COM authentication
-        NULL,                        // Authentication services
-        NULL,                        // Reserved
-        RPC_C_AUTHN_LEVEL_DEFAULT,   // Default authentication 
-        RPC_C_IMP_LEVEL_IMPERSONATE, // Default Impersonation  
-        NULL,                        // Authentication info
-        EOAC_NONE,                   // Additional capabilities 
-        NULL                         // Reserved
+        -1,                       
+        NULL,                     
+        NULL,                        
+        RPC_C_AUTHN_LEVEL_DEFAULT,  
+        RPC_C_IMP_LEVEL_IMPERSONATE, 
+        NULL,                        
+        EOAC_NONE,                  
+        NULL                        
     );
 
 
@@ -43,11 +40,9 @@ int main(int argc, char** argv)
         cout << "Failed to initialize security. Error code = 0x"
             << hex << hres << endl;
         CoUninitialize();
-        return 1;                    // Program has failed.
+        return 1;                  
     }
 
-    // Step 3: ---------------------------------------------------
-    // Obtain the initial locator to WMI -------------------------
 
     IWbemLocator* pLoc = NULL;
 
@@ -63,11 +58,10 @@ int main(int argc, char** argv)
             << " Err code = 0x"
             << hex << hres << endl;
         CoUninitialize();
-        return 1;                 // Program has failed.
+        return 1;                
     }
 
-    // Step 4: -----------------------------------------------------
-    // Connect to WMI through the IWbemLocator::ConnectServer method
+
 
     IWbemServices* pSvc = NULL;
 
@@ -75,14 +69,14 @@ int main(int argc, char** argv)
     // the current user and obtain pointer pSvc
     // to make IWbemServices calls.
     hres = pLoc->ConnectServer(
-        _bstr_t(L"ROOT\\CIMV2"), // Object path of WMI namespace
-        NULL,                    // User name. NULL = current user
-        NULL,                    // User password. NULL = current
-        0,                       // Locale. NULL indicates current
-        NULL,                    // Security flags.
-        0,                       // Authority (for example, Kerberos)
-        0,                       // Context object 
-        &pSvc                    // pointer to IWbemServices proxy
+        _bstr_t(L"ROOT\\CIMV2"), 
+        NULL,                    
+        NULL,                  
+        0,                      
+        NULL,                 
+        0,                    
+        0,                    
+        &pSvc                 
     );
 
     if (FAILED(hres))
@@ -91,24 +85,23 @@ int main(int argc, char** argv)
             << hex << hres << endl;
         pLoc->Release();
         CoUninitialize();
-        return 1;                // Program has failed.
+        return 1;              
     }
 
     cout << "Connected to ROOT\\CIMV2 WMI namespace" << endl;
 
 
-    // Step 5: --------------------------------------------------
-    // Set security levels on the proxy -------------------------
+  
 
     hres = CoSetProxyBlanket(
-        pSvc,                        // Indicates the proxy to set
-        RPC_C_AUTHN_WINNT,           // RPC_C_AUTHN_xxx
-        RPC_C_AUTHZ_NONE,            // RPC_C_AUTHZ_xxx
-        NULL,                        // Server principal name 
-        RPC_C_AUTHN_LEVEL_CALL,      // RPC_C_AUTHN_LEVEL_xxx 
-        RPC_C_IMP_LEVEL_IMPERSONATE, // RPC_C_IMP_LEVEL_xxx
-        NULL,                        // client identity
-        EOAC_NONE                    // proxy capabilities 
+        pSvc,                      
+        RPC_C_AUTHN_WINNT,          
+        RPC_C_AUTHZ_NONE,          
+        NULL,                       
+        RPC_C_AUTHN_LEVEL_CALL,     
+        RPC_C_IMP_LEVEL_IMPERSONATE, 
+        NULL,                        
+        EOAC_NONE                 
     );
 
     if (FAILED(hres))
@@ -118,13 +111,11 @@ int main(int argc, char** argv)
         pSvc->Release();
         pLoc->Release();
         CoUninitialize();
-        return 1;               // Program has failed.
+        return 1;               
     }
 
-    // Step 6: --------------------------------------------------
-    // Use the IWbemServices pointer to make requests of WMI ----
-
-    // For example, get the name of the operating system
+  
+   
     IEnumWbemClassObject* pEnumerator = NULL;
     hres = pSvc->ExecQuery(
         bstr_t("WQL"),
@@ -141,11 +132,10 @@ int main(int argc, char** argv)
         pSvc->Release();
         pLoc->Release();
         CoUninitialize();
-        return 1;               // Program has failed.
+        return 1;              
     }
 
-    // Step 7: -------------------------------------------------
-    // Get the data from the query in step 6 -------------------
+  
 
     IWbemClassObject* pclsObj = NULL;
     ULONG uReturn = 0;
@@ -178,7 +168,7 @@ int main(int argc, char** argv)
         wprintf(L"ProcessID :  \n", ProcessId.bstrVal);
         VariantClear(&ProcessId);
 
-        // Get the value of the Name property
+      
         hr = pclsObj->Get(L"CommandLine", 0, &CommandLine, 0, 0);
         if (FAILED(hr))
         {
@@ -203,6 +193,6 @@ int main(int argc, char** argv)
     pEnumerator->Release();
     CoUninitialize();
 
-    return 0;   // Program successfully completed.
+    return 0;  
 
 }
