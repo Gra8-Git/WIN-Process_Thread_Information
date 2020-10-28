@@ -1,4 +1,4 @@
-PROCESS_BASE_INFORMATION     "pib"
+PROCESS_BASE_INFORMATION     "pib tbi debug thread security DCOM"
 
 
 This simple example show how to get basic information about remote process. 
