@@ -21,7 +21,7 @@ BOOL EnableWindowsPrivilege(BOOL State, HANDLE hprocess)
     ZeroMemory(&tokenp, sizeof(tokenp));
     tokenp.PrivilegeCount = 1;
     
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! function for token
     if (!)
     {
         return FALSE;
