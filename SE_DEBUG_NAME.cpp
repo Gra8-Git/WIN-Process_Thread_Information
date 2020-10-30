@@ -20,7 +20,9 @@ BOOL EnableWindowsPrivilege(BOOL State, HANDLE hprocess)
     DWORD dwSize;
     ZeroMemory(&tokenp, sizeof(tokenp));
     tokenp.PrivilegeCount = 1;
-    if (!OpenProcessToken(hprocess, TOKEN_ALL_ACCESS, &hToken))
+    
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (!)
     {
         return FALSE;
     }
