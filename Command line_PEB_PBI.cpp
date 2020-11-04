@@ -1,4 +1,4 @@
-/* compiled with mingw  and couple lib's :)))))*/
+/* compiled with mingw  and couple lib's :)*/
 #ifndef UNICODE
 #define UNICODE
 #define UNICODE_WAS_UNDEFINED
