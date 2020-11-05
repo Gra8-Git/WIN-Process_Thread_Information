@@ -81,48 +81,63 @@ Cleanup:
     return fIsElevated;
 }
 
-_PROCESS_BASIC_INFORMATION64 readPibmemory(HANDLE hprocess)
+_PROCESS_BASIC_INFORMATION64 readPibmemory64(HANDLE hprocess)
 {
     int pid, ret;
     priv_ULONG read_length;
     HINSTANCE ntdll;
     FN_NtQueryInformationProcess NtQueryInformationProcess = NULL;
-    _PROCESS_BASIC_INFORMATION pbi{0};
     _PROCESS_BASIC_INFORMATION64 pbi64{0};
     SIZE_T *dwBytesRead = NULL;
 
     ntdll = LoadLibrary(L"ntdll.dll"); //load liberary and get hInstance to get function
     if (ntdll == NULL)
     {
-        std::cout << "Unable to load ntdll"
-                  << "\n";
-        return pbi64;
+        std::cout << "Unable to load ntdll\n";
     }
 
     NtQueryInformationProcess = (FN_NtQueryInformationProcess)GetProcAddress(ntdll, NT_QUERY_INFORMATION_PROCESS_NAME); //request function
     if (NtQueryInformationProcess == NULL)
     {
         std::cout << "Unable to get address of " << NT_QUERY_INFORMATION_PROCESS_NAME << "\n";
-        return pbi64;
     }
 
-#ifdef _WIN64
     ZeroMemory(&pbi64, sizeof(pbi64));
     ret = NtQueryInformationProcess(hprocess, ProcessBasicInformation, &pbi64, sizeof(pbi64), &read_length); //get pbi  from the remote process
     if (ret != 0)
     {
         std::cout << "Error at : " << NT_QUERY_INFORMATION_PROCESS_NAME << " ret : " << ret;
-        return pbi64;
     }
-#else
+    return pbi64;
+}
+
+_PROCESS_BASIC_INFORMATION readPibmemory32(HANDLE hprocess)
+{
+    int pid, ret;
+    priv_ULONG read_length;
+    HINSTANCE ntdll;
+    FN_NtQueryInformationProcess NtQueryInformationProcess = NULL;
+    _PROCESS_BASIC_INFORMATION pbi{0};
+    SIZE_T *dwBytesRead = NULL;
+
+    ntdll = LoadLibrary(L"ntdll.dll"); //load liberary and get hInstance to get function
+    if (ntdll == NULL)
+    {
+        std::cout << "Unable to load ntdll\n";
+    }
+
+    NtQueryInformationProcess = (FN_NtQueryInformationProcess)GetProcAddress(ntdll, NT_QUERY_INFORMATION_PROCESS_NAME); //request function
+    if (NtQueryInformationProcess == NULL)
+    {
+        std::cout << "Unable to get address of " << NT_QUERY_INFORMATION_PROCESS_NAME << "\n";
+    }
     ZeroMemory(&pbi, sizeof(pbi));
     ret = NtQueryInformationProcess(hprocess, ProcessBasicInformation, &pbi, sizeof(pbi), &read_length); //get pbi  from the remote process
     if (ret != 0)
     {
         std::cout << "Error at : " << NT_QUERY_INFORMATION_PROCESS_NAME << " ret : " << ret;
-        return pbi64;
     }
-#endif
+    return pbi;
 }
 
 PEB readPEBmemory(HANDLE hprocess, _PROCESS_BASIC_INFORMATION64 pbi64)
@@ -185,7 +200,6 @@ int main(void)
     WCHAR *commandLineContents;
 
     PEB peb;
-    PVOID pebbaseaddress;
     //process id to enable external debug mode
     int PID = 14440;
     hprocess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, PID);
@@ -207,9 +221,16 @@ int main(void)
     {
         std::cout << "\t\tSE_DEBUG_NAME: privilages enabled\n\n";
     }
-    _PROCESS_BASIC_INFORMATION64 pbi64 = readPibmemory(hprocess);
+#ifdef _WIN64
+    _PROCESS_BASIC_INFORMATION64 pbi64 = readPibmemory64(hprocess);
     peb = readPEBmemory(hprocess, pbi64);
     rtlUserProcParamsAddress = readRTLUserProcessParam(hprocess, pbi64.PebBaseAddress);
+#else
+    _PROCESS_BASIC_INFORMATION pbi = readPibmemory32(hprocess);
+    peb = readPEBmemory(hprocess, pbi);
+    rtlUserProcParamsAddress = readRTLUserProcessParam(hprocess, pbi.PebBaseAddress);
+#endif
+
     commandLine = readRTLcommand(hprocess, rtlUserProcParamsAddress);
     commandLineContents = readRTLcommandLine(hprocess, commandLine);
 
