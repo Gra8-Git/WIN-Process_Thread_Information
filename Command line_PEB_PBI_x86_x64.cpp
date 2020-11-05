@@ -15,8 +15,10 @@
 typedef PVOID Privvalue;
 typedef ULONG priv_ULONG;
 typedef PULONG P_priv_ULONG;
+
 #define NT_QUERY_INFORMATION_PROCESS_NAME "NtQueryInformationProcess"
 typedef int (*FN_NtQueryInformationProcess)(HANDLE, int, PVOID, priv_ULONG, P_priv_ULONG);
+
 #pragma commant(lib, "advapi32.lib");
 
 BOOL EnableWindowsPrivilege(BOOL State, HANDLE hprocess)
@@ -211,8 +213,7 @@ int main(void)
     commandLine = readRTLcommand(hprocess, rtlUserProcParamsAddress);
     commandLineContents = readRTLcommandLine(hprocess, commandLine);
 
-    printf("Command Line : %.*S\n", commandLine.Length / 2, commandLineContents);
-
+    std::wcout << "Command Line: " << commandLineContents << "\n";
     std::cout << "\n___________________________________________________________\n";
     std::cout << "\t\tPROCESS BASIC INFORMATION  x64 :\n";
     std::cout << "pbi PEBBASEADDRESS :" << pbi64.PebBaseAddress << "\n";
