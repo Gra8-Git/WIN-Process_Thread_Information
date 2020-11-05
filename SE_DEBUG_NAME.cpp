@@ -12,7 +12,7 @@
 #endif
 
 #pragma commant(lib, "advapi32.lib");
-//Visual Code C++ minGW  for proper work need to be one more function
+ minGW  for proper work need to be one more function
 BOOL EnableWindowsPrivilege(BOOL State, HANDLE hprocess)
 {
     HANDLE hToken;
