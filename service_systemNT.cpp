@@ -374,3 +374,4 @@ int _tmain(int argc, TCHAR *argv[])
     //UninstallService();
     return 0;
 }
+
