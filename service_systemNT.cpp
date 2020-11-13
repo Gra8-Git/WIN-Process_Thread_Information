@@ -338,7 +338,7 @@ void StopService()
     }
 }
 //START SERVICE  SC -Manager database
-void DoStartSvc()
+void StartService()
 {
     SERVICE_STATUS_PROCESS ssStatus;
     DWORD dwOldCheckPoint;
@@ -653,7 +653,7 @@ int main(int argc, TCHAR *argv[])
 {
 
     Create_Service();
-
+    StartService();
     return 0;
 }
 
