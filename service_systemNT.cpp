@@ -2,7 +2,7 @@
 #include<iostream>
 using namespace std;
 
-TCHAR *service_name = LPTSTR("testcomm 0.2");
+TCHAR *service_name = LPTSTR("testc 0.1");
 SERVICE_STATUS Service_Status;
 SERVICE_STATUS_HANDLE Service_Status_Handle = 0;
 HANDLE Stop_Service_Event = 0;
@@ -91,9 +91,10 @@ void Create_Service()
 
             }
     }
+    std::cout<<"Service was created :"<<service_name<<"\n";
 }
 //UNINSTALL SERVICE SC -Manager database
-void UninstallService()
+void Uninstall_Service()
 {
     SC_HANDLE Open_Control_Manager = OpenSCManager(0, 0, SC_MANAGER_CONNECT);
 
@@ -108,8 +109,10 @@ void UninstallService()
             switch (serviceStatus.dwCurrentState) 
             {
                     case SERVICE_STOPPED:
-                DeleteService(service);
-                std::cout<<"Service was removed from SC manager:"<<service_name<<" \n"; 
+                    if(DeleteService(service)){
+                std::cout<<"Service was removed from SC manager:"<<service_name<<" \n"; }else{
+                    std::cout<<"Can't  removed service from SC manager:"<<service_name<<" \n"; 
+                }
                     case SERVICE_STOP_PENDING:
                 std::cout<<"The service is stopping:"<<service_name<<" \n"; 
                     case SERVICE_START_PENDING:
@@ -165,6 +168,7 @@ void UninstallService()
 
             }
         }
+
         CloseServiceHandle(Open_Control_Manager);
     }
         else
@@ -186,9 +190,10 @@ void UninstallService()
 
             }
     }
+    std::cout<<"Service removed :"<<service_name<<"\n";
 }
 //STOP SERVICE  SC -Manager database
-void StopService()
+void Stop_Service()
 {
     SERVICE_STATUS_PROCESS serviceStatus;
     DWORD dwOldCheckPoint;
@@ -338,7 +343,7 @@ void StopService()
     }
 }
 //START SERVICE  SC -Manager database
-void StartService()
+void Start_Service()
 {
     SERVICE_STATUS_PROCESS ssStatus;
     DWORD dwOldCheckPoint;
@@ -623,37 +628,71 @@ else
 //SERVICE MAIN FUNCTION 
 void WINAPI ServiceMain(DWORD argc, TCHAR *  argv[])
 {
-    Service_Status_Handle = RegisterServiceCtrlHandler(service_name, Service_Control_Handler); //register service handler
-   // initialise service status
+        // initialise service status
     Service_Status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-    Service_Status.dwCurrentState = SERVICE_START_PENDING;
-    Service_Status.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
+    Service_Status.dwCurrentState = SERVICE_DEMAND_START;
+    Service_Status.dwControlsAccepted = 0;
     Service_Status.dwWin32ExitCode = 0;
     Service_Status.dwServiceSpecificExitCode = NO_ERROR;
     Service_Status.dwCheckPoint = 0;
     Service_Status.dwWaitHint = 0;
-    ReportServiceStatus(SERVICE_RUNNING, NO_ERROR, 0); //report to SC-manager
- 
+
+    ReportServiceStatus(SERVICE_DEMAND_START, NO_ERROR, 300000);
+    ReportServiceStatus(SERVICE_RUNNING, NO_ERROR, 0);
+
+    
+    Service_Status_Handle = RegisterServiceCtrlHandler(service_name, Service_Control_Handler);
+
+
     if (Service_Status_Handle)
     {
-        Stop_Service_Event = CreateEvent(0, TRUE, FALSE, 0);
+        Service_Status.dwCurrentState = SERVICE_DEMAND_START;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
 
+        Stop_Service_Event = CreateEvent(0, FALSE, FALSE, 0);
+
+        Service_Status.dwControlsAccepted |= (SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
+        Service_Status.dwCurrentState = SERVICE_RUNNING;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
         WaitForSingleObject(Stop_Service_Event, 0);
+
         while (1)
         {
+
             WaitForSingleObject(Stop_Service_Event, INFINITE);
 
             ReportServiceStatus(SERVICE_STOPPED, NO_ERROR, 0);
             return;
         }
+        Service_Status.dwCurrentState = SERVICE_STOP_PENDING;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
+        CloseHandle(Stop_Service_Event);
+        Stop_Service_Event = 0;
+        Service_Status.dwControlsAccepted &= ~(SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
+        Service_Status.dwCurrentState = SERVICE_STOPPED;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
     }
+
 }
 
 int main(int argc, TCHAR *argv[])
 {
+   if( lstrcmpi( argv[1], TEXT("install")) == 0 )
+    {
+    Create_Service();    
+    }
+   if( lstrcmpi( argv[1], TEXT("start")) == 0 )
+    {
+    Start_Service(); 
+    }
+    if( lstrcmpi( argv[1], TEXT("uninstall")) == 0 )
+    {
+    Uninstall_Service();
+    }
+    if( lstrcmpi( argv[1], TEXT("stop")) == 0 )
+    {
+    Stop_Service();
+    }
 
-    Create_Service();
-    StartService();
     return 0;
 }
-
