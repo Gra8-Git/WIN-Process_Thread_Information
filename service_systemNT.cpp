@@ -1,178 +1,344 @@
 #include <windows.h>
-#include <tchar.h>
-#include <cstdio>
-#pragma comment(lib, "msvcr100.lib")
-#define SERVICE_ACCOUNT "NT AUTHORITY\\LocalService"
-// The password to the service account name
-#define SERVICE_PASSWORD NULL
+#include<iostream>
+using namespace std;
 
-TCHAR *serviceName = LPTSTR("testcomm 0.2");
-SERVICE_STATUS serviceStatus;
-SERVICE_STATUS_HANDLE serviceStatusHandle = 0;
-HANDLE stopServiceEvent = 0;
-
-void ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
+TCHAR *service_name = LPTSTR("testcomm 0.2");
+SERVICE_STATUS Service_Status;
+SERVICE_STATUS_HANDLE Service_Status_Handle = 0;
+HANDLE Stop_Service_Event = 0;
+//CREATE SERVICE SC -Manager database
+void Create_Service()
 {
-    static DWORD dwCheckPoint = 1;
-
-    // Fill in the SERVICE_STATUS structure.
-
-    serviceStatus.dwCurrentState = dwCurrentState;
-    serviceStatus.dwWin32ExitCode = dwWin32ExitCode;
-    serviceStatus.dwWaitHint = dwWaitHint;
-
-    if (dwCurrentState == SERVICE_START_PENDING)
-        serviceStatus.dwControlsAccepted = 0;
-    else
-        serviceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
-
-    if ((dwCurrentState == SERVICE_RUNNING) ||
-        (dwCurrentState == SERVICE_STOPPED))
-        serviceStatus.dwCheckPoint = 0;
-    else
-        serviceStatus.dwCheckPoint = dwCheckPoint++;
-
-    // Report the status of the service to the SCM.
-    SetServiceStatus(serviceStatusHandle, &serviceStatus);
-}
-
-void WINAPI ServiceControlHandler(DWORD controlCode)
-{
-    switch (controlCode)
-    {
-    case SERVICE_CONTROL_INTERROGATE:
-        break;
-
-    case SERVICE_CONTROL_SHUTDOWN:
-    case SERVICE_CONTROL_STOP:
-        serviceStatus.dwCurrentState = SERVICE_STOP_PENDING;
-        SetServiceStatus(serviceStatusHandle, &serviceStatus);
-
-        SetEvent(stopServiceEvent);
-        return;
-
-    case SERVICE_CONTROL_PAUSE:
-        break;
-
-    case SERVICE_CONTROL_CONTINUE:
-        break;
-
-    default:
-
-        break;
-    }
-
-    SetServiceStatus(serviceStatusHandle, &serviceStatus);
-}
-
-void WINAPI ServiceMain(DWORD /*argc*/, TCHAR * /*argv*/[])
-{
-
-    LPVOID lpDisplayBuf;
-
-    // initialise service status
-    serviceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-    serviceStatus.dwCurrentState = SERVICE_DEMAND_START;
-    serviceStatus.dwControlsAccepted = 0;
-    serviceStatus.dwWin32ExitCode = 0;
-    serviceStatus.dwServiceSpecificExitCode = NO_ERROR;
-    serviceStatus.dwCheckPoint = 0;
-    serviceStatus.dwWaitHint = 0;
-
-    ReportSvcStatus(SERVICE_DEMAND_START, NO_ERROR, 300000);
-
-    ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
-
-    serviceStatusHandle = RegisterServiceCtrlHandler(serviceName, ServiceControlHandler);
-
-    if (serviceStatusHandle)
-    {
-        serviceStatus.dwCurrentState = SERVICE_DEMAND_START;
-        SetServiceStatus(serviceStatusHandle, &serviceStatus);
-
-        stopServiceEvent = CreateEvent(0, FALSE, FALSE, 0);
-
-        serviceStatus.dwControlsAccepted |= (SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
-        serviceStatus.dwCurrentState = SERVICE_RUNNING;
-        SetServiceStatus(serviceStatusHandle, &serviceStatus);
-        WaitForSingleObject(stopServiceEvent, 0);
-
-        while (1)
-        {
-
-            WaitForSingleObject(stopServiceEvent, INFINITE);
-
-            ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
-            return;
-        }
-        serviceStatus.dwCurrentState = SERVICE_STOP_PENDING;
-        SetServiceStatus(serviceStatusHandle, &serviceStatus);
-        CloseHandle(stopServiceEvent);
-        stopServiceEvent = 0;
-        serviceStatus.dwControlsAccepted &= ~(SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN);
-        serviceStatus.dwCurrentState = SERVICE_STOPPED;
-        SetServiceStatus(serviceStatusHandle, &serviceStatus);
-    }
-}
-
-void RunService()
-{
-    SERVICE_TABLE_ENTRY serviceTable[] =
-        {
-            {serviceName, ServiceMain},
-            {0, 0}};
-
-    StartServiceCtrlDispatcher(serviceTable);
-}
-
-void InstallService()
-{
-    SC_HANDLE serviceControlManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
-
-    if (serviceControlManager)
+    SC_HANDLE Open_Control_Manager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
+    if (Open_Control_Manager)
     {
         TCHAR path[_MAX_PATH + 1];
-        if (GetModuleFileName(0, path, sizeof(path) / sizeof(path[0])) > 0)
+        if (GetModuleFileName(0, path, sizeof(path) / sizeof(path[0])) > 0)     //Get path of the application to create on his base service 
         {
-            SC_HANDLE service = CreateService(serviceControlManager,
-                                              serviceName, serviceName,
+            SC_HANDLE service = CreateService(Open_Control_Manager, service_name, service_name,
                                               SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS | SERVICE_INTERACTIVE_PROCESS,
                                               SERVICE_AUTO_START, SERVICE_ERROR_IGNORE, path,
                                               0, 0, 0, 0, 0);
             if (service)
+            {
                 CloseServiceHandle(service);
+            }
+            else
+            {
+            DWORD dwError = GetLastError();   //Get all errors for CreateService() 
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: Handle haven't  ACCESS RIGHTS."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_CIRCULAR_DEPENDENCY:
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: A circular service dependency was specified."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_DUPLICATE_SERVICE_NAME:
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: Service Name already exists in the service control manager database."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_INVALID_HANDLE:
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: Handler to the specific control manager database is invalid."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_INVALID_NAME :
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: The specific service name is invalid."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_INVALID_PARAMETER :
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: A parameter that was specified is invalid."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_INVALID_SERVICE_ACCOUNT :
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: The user account name specified in the lpServiceStartName parameter does not exist."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_SERVICE_EXISTS :
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: The specified service already exists in this database."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    case ERROR_SERVICE_MARKED_FOR_DELETE :
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: The specified service already exists in this database and has been marked for deletion."<<(int)dwError<<"\n"; 
+                CloseServiceHandle(Open_Control_Manager);
+                break;
+                    default:
+                std::cout<<" Create Service Object and add to SC_manager database (SC_Manager) ERROR: UNKOWN ERROR "<<(int)dwError<<"\n"; 
+                     CloseServiceHandle(Open_Control_Manager);
+            }
+            }
         }
+        CloseServiceHandle(Open_Control_Manager);
+    }
+    else
+    {
+    DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: Access Deny"<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_DATABASE_DOES_NOT_EXIST:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: DATABSE OF SERVICE MANAGER NOT EXISTS"<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_PARAMETER:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: INVALID PARAMETERS"<<(int)dwError<<"\n";      
+                break;
+                    default:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: UNKOWN ERROR "<<(int)dwError<<"\n";      
 
-        CloseServiceHandle(serviceControlManager);
+            }
     }
 }
-
+//UNINSTALL SERVICE SC -Manager database
 void UninstallService()
 {
-    SC_HANDLE serviceControlManager = OpenSCManager(0, 0, SC_MANAGER_CONNECT);
+    SC_HANDLE Open_Control_Manager = OpenSCManager(0, 0, SC_MANAGER_CONNECT);
 
-    if (serviceControlManager)
+    if (Open_Control_Manager)
     {
-        SC_HANDLE service = OpenService(serviceControlManager,
-                                        serviceName, SERVICE_QUERY_STATUS | DELETE);
+        SC_HANDLE service = OpenService(Open_Control_Manager,service_name, SERVICE_QUERY_STATUS | DELETE); //return handler of the service from SC-manager database
         if (service)
         {
             SERVICE_STATUS serviceStatus;
-            if (QueryServiceStatus(service, &serviceStatus))
+            if (QueryServiceStatus(service, &serviceStatus)) //Retrieves the current status of the specified service.
             {
-                if (serviceStatus.dwCurrentState == SERVICE_STOPPED)
-                    DeleteService(service);
+            switch (serviceStatus.dwCurrentState) 
+            {
+                    case SERVICE_STOPPED:
+                DeleteService(service);
+                std::cout<<"Service was removed from SC manager:"<<service_name<<" \n"; 
+                    case SERVICE_STOP_PENDING:
+                std::cout<<"The service is stopping:"<<service_name<<" \n"; 
+                    case SERVICE_START_PENDING:
+                std::cout<<"The service is starting. :"<<service_name<<" \n"; 
+                    case SERVICE_RUNNING:
+                std::cout<<"The service is running.:"<<service_name<<" \n"; 
+                    case SERVICE_PAUSED:
+                std::cout<<"The service is paused. :"<<service_name<<" \n"; 
+                    case SERVICE_PAUSE_PENDING:
+                std::cout<<"The service pause is pending. :"<<service_name<<" \n"; 
+                    case SERVICE_CONTINUE_PENDING:
+                std::cout<<"The service continue is pending. :"<<service_name<<" \n"; 
+                    default:
+                std::cout<<" UNKNOWN STATUS OF THE SERVICE TRY TO REMOVE IT MANUALY with command line.\n";      
             }
-
+            }
+            else
+            {
+                   DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Query Service Status (SC_Manager) ERROR: The handle does not have the SERVICE_QUERY_STATUS access right."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_HANDLE:
+                std::cout<<" Query to Service Status (SC_Manager) ERROR: The handle is invalid."<<(int)dwError<<"\n"; 
+                break;
+                    default:
+                std::cout<<" Query to Service Status (SC_Manager) ERROR: UNKOWN ERROR "<<(int)dwError<<"\n";
+            }
+            }
             CloseServiceHandle(service);
         }
+        else
+        {
+            DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Open Service (SC_Manager) ERROR: Access Deny."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_SERVICE_DOES_NOT_EXIST:
+                std::cout<<" Open Service (SC_Manager) ERROR: SERVICE DOSE NOT EXIST."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_HANDLE:
+                std::cout<<" Open Service (SC_Manager) ERROR: INVALID HANDLER. "<<(int)dwError<<"\n";      
+                break;
+                    case ERROR_INVALID_NAME:
+                std::cout<<" Open Service (SC_Manager) ERROR: Specific Service name is invalid. "<<(int)dwError<<"\n";      
+                break;
+                    default:
+                std::cout<<" Open Service (SC_Manager) ERROR: UNKOWN ERROR. "<<(int)dwError<<"\n";      
 
-        CloseServiceHandle(serviceControlManager);
+            }
+        }
+        CloseServiceHandle(Open_Control_Manager);
+    }
+        else
+    {
+    DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: Access Deny"<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_DATABASE_DOES_NOT_EXIST:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: DATABSE OF SERVICE MANAGER NOT EXISTS"<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_PARAMETER:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: INVALID PARAMETERS"<<(int)dwError<<"\n";      
+                break;
+                    default:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: UNKOWN ERROR "<<(int)dwError<<"\n";      
+
+            }
     }
 }
+//STOP SERVICE  SC -Manager database
+void StopService()
+{
+    SERVICE_STATUS_PROCESS serviceStatus;
+    DWORD dwOldCheckPoint;
+    DWORD dwStartTickCount;
+    DWORD dwWaitTime;
+    DWORD dwBytesNeeded;
+    SC_HANDLE Open_Control_Manager = OpenSCManager(0, 0, SC_MANAGER_CONNECT);
 
-//Start service  automatically
-VOID __stdcall DoStartSvc()
+    if (Open_Control_Manager)
+    {
+        SC_HANDLE service = OpenService(Open_Control_Manager,service_name, SERVICE_STOP |  SERVICE_QUERY_STATUS |  SERVICE_ENUMERATE_DEPENDENTS ); //return handler of the service from SC-manager database
+        if (service)
+        {
+            SERVICE_STATUS serviceStatus;
+            if (QueryServiceStatus(service, &serviceStatus)) //Retrieves the current status of the specified service.
+            {
+            switch (serviceStatus.dwCurrentState) 
+            {
+                    case SERVICE_STOPPED:
+                std::cout<<"Service was stoped :"<<service_name<<" \n"; 
+                    case SERVICE_STOP_PENDING:
+                std::cout<<"The service is stopping:"<<service_name<<" \n"; 
+                dwStartTickCount = GetTickCount();
+                dwOldCheckPoint = serviceStatus.dwCheckPoint;
+                while (serviceStatus.dwCurrentState == SERVICE_STOP_PENDING)
+    {
+        dwWaitTime = serviceStatus.dwWaitHint / 10;
+
+        if (dwWaitTime < 1000)
+            dwWaitTime = 1000;
+        else if (dwWaitTime > 10000)
+            dwWaitTime = 10000;
+
+        Sleep(dwWaitTime);
+
+        if (!QueryServiceStatusEx(
+                service,                     // handle to service
+                SC_STATUS_PROCESS_INFO,         // information level
+                (LPBYTE)&serviceStatus,              // address of structure
+                sizeof(SERVICE_STATUS_PROCESS), // size of structure
+                &dwBytesNeeded))                // size needed if buffer is too small
+        {
+            printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
+            CloseServiceHandle(service);
+            CloseServiceHandle(Open_Control_Manager);
+            return;
+        }
+
+        if (serviceStatus.dwCheckPoint > dwOldCheckPoint)
+        {
+            dwStartTickCount = GetTickCount();
+            dwOldCheckPoint = serviceStatus.dwCheckPoint;
+        }
+        else
+        {
+            if (GetTickCount() - dwStartTickCount > serviceStatus.dwWaitHint)
+            {
+                printf("Timeout waiting for service to stop\n");
+                CloseServiceHandle(service);
+                CloseServiceHandle(Open_Control_Manager);
+                return;
+            }
+        }
+    }
+                if (!ControlService(service,SERVICE_CONTROL_STOP,(LPSERVICE_STATUS) &serviceStatus))// send code to stop service
+                    {
+                    std::cout<<"ControlService failed "<< GetLastError()<<"\n";
+                    }
+                    else
+                    {
+                    std::cout<<"Control Service Stop the service\n";
+                    }
+
+                    case SERVICE_START_PENDING:
+                std::cout<<"The service is starting. :"<<service_name<<" \n"; 
+                    case SERVICE_RUNNING:
+                std::cout<<"The service is running.:"<<service_name<<" \n"; 
+                    case SERVICE_PAUSED:
+                std::cout<<"The service is paused. :"<<service_name<<" \n"; 
+                    case SERVICE_PAUSE_PENDING:
+                std::cout<<"The service pause is pending. :"<<service_name<<" \n"; 
+                    case SERVICE_CONTINUE_PENDING:
+                std::cout<<"The service continue is pending. :"<<service_name<<" \n"; 
+                    default:
+                std::cout<<" UNKNOWN STATUS OF THE SERVICE TRY TO REMOVE IT MANUALY with command line.\n";      
+            }
+            }
+            else
+            {
+                   DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Query Service Status (SC_Manager) ERROR: The handle does not have the SERVICE_QUERY_STATUS access right."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_HANDLE:
+                std::cout<<" Query to Service Status (SC_Manager) ERROR: The handle is invalid."<<(int)dwError<<"\n"; 
+                break;
+                    default:
+                std::cout<<" Query to Service Status (SC_Manager) ERROR: UNKOWN ERROR "<<(int)dwError<<"\n";
+            }
+            }
+            CloseServiceHandle(service);
+        }
+        else
+        {
+            DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Open Service (SC_Manager) ERROR: Access Deny."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_SERVICE_DOES_NOT_EXIST:
+                std::cout<<" Open Service (SC_Manager) ERROR: SERVICE DOSE NOT EXIST."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_HANDLE:
+                std::cout<<" Open Service (SC_Manager) ERROR: INVALID HANDLER. "<<(int)dwError<<"\n";      
+                break;
+                    case ERROR_INVALID_NAME:
+                std::cout<<" Open Service (SC_Manager) ERROR: Specific Service name is invalid. "<<(int)dwError<<"\n";      
+                break;
+                    default:
+                std::cout<<" Open Service (SC_Manager) ERROR: UNKOWN ERROR. "<<(int)dwError<<"\n";      
+
+            }
+        }
+        CloseServiceHandle(Open_Control_Manager);
+    }
+        else
+    {
+    DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_ACCESS_DENIED:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: Access Deny"<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_DATABASE_DOES_NOT_EXIST:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: DATABSE OF SERVICE MANAGER NOT EXISTS"<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_PARAMETER:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: INVALID PARAMETERS"<<(int)dwError<<"\n";      
+                break;
+                    default:
+                std::cout<<" Connection to Service Manager (SC_Manager) ERROR: UNKOWN ERROR "<<(int)dwError<<"\n";      
+
+            }
+    }
+}
+//START SERVICE  SC -Manager database
+void DoStartSvc()
 {
     SERVICE_STATUS_PROCESS ssStatus;
     DWORD dwOldCheckPoint;
@@ -194,7 +360,7 @@ VOID __stdcall DoStartSvc()
 
     schService = OpenService(
         schSCManager,        // SCM database
-        serviceName,         // name of service
+        service_name,         // name of service
         SERVICE_ALL_ACCESS); // full access
 
     if (schService == NULL)
@@ -363,15 +529,131 @@ VOID __stdcall DoStartSvc()
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
 }
+//REPORT SERVICE STATUS IN SC -MANAGER (FUNCTION FOR SERVICE MAIN)
+void ReportServiceStatus( DWORD dwCurrentState,DWORD dwWin32ExitCode, DWORD dwWaitHint)
+{
+    static DWORD dwCheckPoint = 1;
+    // Fill in the SERVICE_STATUS structure.
+    Service_Status.dwCurrentState = dwCurrentState;
+    Service_Status.dwWin32ExitCode = dwWin32ExitCode;
+    Service_Status.dwWaitHint = dwWaitHint;
+    if (dwCurrentState == SERVICE_START_PENDING)
+        Service_Status.dwControlsAccepted = 0;
+    else Service_Status.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+    if ( (dwCurrentState == SERVICE_RUNNING) ||
+           (dwCurrentState == SERVICE_STOPPED) )
+        Service_Status.dwCheckPoint = 0;
+    else Service_Status.dwCheckPoint = dwCheckPoint++;
+    
+    if(SetServiceStatus( Service_Status_Handle, &Service_Status ))// Report the status of the service to the SCM.
+{
+std::cout<<"Service stattus was updated"<<Service_Status.dwCurrentState<<"\n";
+}
+else
+{
+            DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_INVALID_DATA:
+                std::cout<<" Set Service Status Report (SC_Manager) ERROR: The specified service status structure is invalid."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_HANDLE:
+                std::cout<<" Set Service Status Report (SC_Manager) ERROR: The specified handle is invalid."<<(int)dwError<<"\n"; 
+                break;
+                    default:
+                std::cout<<" Set Service Status Report (SC_Manager) ERROR: UNKOWN ERROR. "<<(int)dwError<<"\n";      
+            }
+}
 
-int _tmain(int argc, TCHAR *argv[])
+}
+//HANDLER FOR SERVICE STATUS FOR SC -MANAGER (FUNCTION FOR SERVICE MAIN)
+void WINAPI Service_Control_Handler(DWORD controlCode)
+{
+    switch (controlCode)
+    {
+    case SERVICE_CONTROL_INTERROGATE:
+        break;
+    case SERVICE_CONTROL_SHUTDOWN:
+        std::cout<<"Service ShutDown";
+        Service_Status.dwWin32ExitCode = 0;
+        Service_Status.dwCurrentState =SERVICE_STOPPED;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
+        SetEvent(Stop_Service_Event);
+    case SERVICE_CONTROL_STOP:
+        std::cout<<"Service Stoped\n";
+        Service_Status.dwWin32ExitCode = 0;
+        Service_Status.dwCurrentState =SERVICE_STOPPED;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
+        SetEvent(Stop_Service_Event);
+    case SERVICE_CONTROL_PAUSE:
+        std::cout<<"Service paused\n";
+        Service_Status.dwCurrentState =SERVICE_PAUSED;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
+        SetEvent(Stop_Service_Event);
+    case SERVICE_CONTROL_CONTINUE:
+        std::cout<<"Service Running\n";
+        Service_Status.dwCurrentState =SERVICE_RUNNING;
+        SetServiceStatus(Service_Status_Handle, &Service_Status);
+        SetEvent(Stop_Service_Event);
+    default:
+        break;
+    }
+
+    if(SetServiceStatus(Service_Status_Handle, &Service_Status))
+{
+std::cout<<"Service stattus was updated"<<Service_Status.dwCurrentState<<"\n";
+}
+else
+{
+            DWORD dwError = GetLastError();  //Get all errors for OpenSCManager()
+            switch (dwError) 
+            {
+                    case ERROR_INVALID_DATA:
+                std::cout<<" Set Service Status Report (SC_Manager) ERROR: The specified service status structure is invalid."<<(int)dwError<<"\n"; 
+                break;
+                    case ERROR_INVALID_HANDLE:
+                std::cout<<" Set Service Status Report (SC_Manager) ERROR: The specified handle is invalid."<<(int)dwError<<"\n"; 
+                break;
+                    default:
+                std::cout<<" Set Service Status Report (SC_Manager) ERROR: UNKOWN ERROR. "<<(int)dwError<<"\n";      
+            }
+}
+
+}
+//SERVICE MAIN FUNCTION 
+void WINAPI ServiceMain(DWORD argc, TCHAR *  argv[])
+{
+    Service_Status_Handle = RegisterServiceCtrlHandler(service_name, Service_Control_Handler); //register service handler
+   // initialise service status
+    Service_Status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    Service_Status.dwCurrentState = SERVICE_START_PENDING;
+    Service_Status.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
+    Service_Status.dwWin32ExitCode = 0;
+    Service_Status.dwServiceSpecificExitCode = NO_ERROR;
+    Service_Status.dwCheckPoint = 0;
+    Service_Status.dwWaitHint = 0;
+    ReportServiceStatus(SERVICE_RUNNING, NO_ERROR, 0); //report to SC-manager
+ 
+    if (Service_Status_Handle)
+    {
+        Stop_Service_Event = CreateEvent(0, TRUE, FALSE, 0);
+
+        WaitForSingleObject(Stop_Service_Event, 0);
+        while (1)
+        {
+            WaitForSingleObject(Stop_Service_Event, INFINITE);
+
+            ReportServiceStatus(SERVICE_STOPPED, NO_ERROR, 0);
+            return;
+        }
+    }
+}
+
+int main(int argc, TCHAR *argv[])
 {
 
-    InstallService();
-    DoStartSvc();
-    RunService();
+    Create_Service();
 
-    //UninstallService();
     return 0;
 }
 
