@@ -22,19 +22,26 @@ void UninstallService()
             {
                     case SERVICE_STOPPED:
                 DeleteService(service);
-                std::cout<<"Service was removed from SC manager:"<<service_name<<" \n"; 
+                std::cout<<"Service was removed from SC manager:"<<service_name<<" \n";
+                    break;
                     case SERVICE_STOP_PENDING:
                 std::cout<<"The service is stopping:"<<service_name<<" \n"; 
+                    break;
                     case SERVICE_START_PENDING:
                 std::cout<<"The service is starting. :"<<service_name<<" \n"; 
+                    break;
                     case SERVICE_RUNNING:
                 std::cout<<"The service is running.:"<<service_name<<" \n"; 
+                    break;
                     case SERVICE_PAUSED:
                 std::cout<<"The service is paused. :"<<service_name<<" \n"; 
+                    break;
                     case SERVICE_PAUSE_PENDING:
                 std::cout<<"The service pause is pending. :"<<service_name<<" \n"; 
+                    break
                     case SERVICE_CONTINUE_PENDING:
                 std::cout<<"The service continue is pending. :"<<service_name<<" \n"; 
+                    break;
                     default:
                 std::cout<<" UNKNOWN STATUS OF THE SERVICE TRY TO REMOVE IT MANUALY with command line.\n";      
             }
