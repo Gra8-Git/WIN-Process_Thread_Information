@@ -21,35 +21,7 @@ typedef int (*FN_NtQueryInformationProcess)(HANDLE, int, PVOID, priv_ULONG, P_pr
 
 #pragma commant(lib, "advapi32.lib");
 
-BOOL EnableWindowsPrivilege(BOOL State, HANDLE hprocess)
-{
-    HANDLE hToken;
-    TOKEN_PRIVILEGES tokenp;
-    DWORD dwSize;
-    ZeroMemory(&tokenp, sizeof(tokenp));
-    tokenp.PrivilegeCount = 1;
-    if (!OpenProcessToken(hprocess, TOKEN_ALL_ACCESS, &hToken))
-    {
-        return FALSE;
-    }
-    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tokenp.Privileges[0].Luid))
-    {
-        CloseHandle(hToken);
-    }
-    if (State)
-    {
-        tokenp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    }
-    else
-    {
-        tokenp.Privileges[0].Attributes = SE_PRIVILEGE_REMOVED;
-    }
-    if (!AdjustTokenPrivileges(hToken, FALSE, &tokenp, 0, NULL, &dwSize))
-    {
-        CloseHandle(hToken);
-    }
-    return TRUE;
-}
+
 
 BOOL IsProcessUAC(HANDLE hprocess)
 {
