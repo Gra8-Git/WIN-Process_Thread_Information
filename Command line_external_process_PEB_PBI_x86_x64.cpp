@@ -21,7 +21,35 @@ typedef int (*FN_NtQueryInformationProcess)(HANDLE, int, PVOID, priv_ULONG, P_pr
 
 #pragma commant(lib, "advapi32.lib");
 
-
+BOOL EnableWindowsPrivilege(BOOL State, HANDLE hprocess)
+{
+    HANDLE hToken;
+    TOKEN_PRIVILEGES tokenp;
+    DWORD dwSize;
+    ZeroMemory(&tokenp, sizeof(tokenp));
+    tokenp.PrivilegeCount = 1;
+    if (!OpenProcessToken(hprocess, TOKEN_ALL_ACCESS, &hToken))
+    {
+        return FALSE;
+    }
+    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tokenp.Privileges[0].Luid))
+    {
+        CloseHandle(hToken);
+    }
+    if (State)
+    {
+        tokenp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    }
+    else
+    {
+        tokenp.Privileges[0].Attributes = SE_PRIVILEGE_REMOVED;
+    }
+    if (!AdjustTokenPrivileges(hToken, FALSE, &tokenp, 0, NULL, &dwSize))
+    {
+        CloseHandle(hToken);
+    }
+    return TRUE;
+}
 
 BOOL IsProcessUAC(HANDLE hprocess)
 {
@@ -112,11 +140,22 @@ _PROCESS_BASIC_INFORMATION readPibmemory32(HANDLE hprocess)
     return pbi;
 }
 
-PEB readPEBmemory(HANDLE hprocess, _PROCESS_BASIC_INFORMATION64 pbi64)
+PEB readPEBmemory64(HANDLE hprocess, _PROCESS_BASIC_INFORMATION64 pbi64)
 {
     PEB peb;
-    UINT64 dwSize = 0;
+    SIZE_T dwSize = 0;
     if (!ReadProcessMemory(hprocess, pbi64.PebBaseAddress, &peb, sizeof(PEB), &dwSize))
+    {
+        std::cout << "Could not read the address of PEB :" << GetLastError() << "\n";
+    }
+    return peb;
+}
+
+PEB readPEBmemory32(HANDLE hprocess, _PROCESS_BASIC_INFORMATION pbi)
+{
+    PEB peb;
+    SIZE_T dwSize = 0;
+    if (!ReadProcessMemory(hprocess, pbi.PebBaseAddress, &peb, sizeof(PEB), &dwSize))
     {
         std::cout << "Could not read the address of PEB :" << GetLastError() << "\n";
     }
@@ -173,7 +212,7 @@ int main(void)
 
     PEB peb;
     //process id to enable external debug mode
-    int PID = 14440;
+    int PID = 5712;
     hprocess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, PID);
 
     if (IsProcessUAC(hprocess) == TRUE)
@@ -195,14 +234,8 @@ int main(void)
     }
 #ifdef _WIN64
     _PROCESS_BASIC_INFORMATION64 pbi64 = readPibmemory64(hprocess);
-    peb = readPEBmemory(hprocess, pbi64);
-    rtlUserProcParamsAddress = readRTLUserProcessParam(hprocess, pbi64.PebBaseAddress);
-#else
-    _PROCESS_BASIC_INFORMATION pbi = readPibmemory32(hprocess);
-    peb = readPEBmemory(hprocess, pbi);
-    rtlUserProcParamsAddress = readRTLUserProcessParam(hprocess, pbi.PebBaseAddress);
-#endif
-
+    peb = readPEBmemory64(hprocess, pbi64);
+    rtlUserProcParamsAddress = readRTLUserProcessParam(hprocess, pbi64.PebBaseAddress);  
     commandLine = readRTLcommand(hprocess, rtlUserProcParamsAddress);
     commandLineContents = readRTLcommandLine(hprocess, commandLine);
 
@@ -223,5 +256,29 @@ int main(void)
     }
     std::cout << "_____________________________________________________________\n";
 
+#else
+    _PROCESS_BASIC_INFORMATION pbi = readPibmemory32(hprocess);
+    peb = readPEBmemory32(hprocess, pbi);
+    rtlUserProcParamsAddress = readRTLUserProcessParam(hprocess, pbi.PebBaseAddress);
+
+    commandLine = readRTLcommand(hprocess, rtlUserProcParamsAddress);
+    commandLineContents = readRTLcommandLine(hprocess, commandLine);
+    std::wcout << "Command Line: " << commandLineContents << "\n";
+    std::cout << "\n___________________________________________________________\n";
+    std::cout << "\t\tPROCESS BASIC INFORMATION  x64 :\n";
+    std::cout << "pbi PEBBASEADDRESS :" << pbi.PebBaseAddress << "\n";
+    std::cout << "pbi UNIQUEPROCESSID :" << pbi.uUniqueProcessId << "\n";
+    std::cout << "_____________________________________________________________\n";
+    std::cout << "\t\tProcess PEB structure \n";
+    if (peb.BeingDebugged == TRUE)
+    {
+        std::cout << "PEB Process debugged: ture\n";
+    }
+    else
+    {
+        std::cout << "PEB Process debugged: false\n";
+    }
+    std::cout << "_____________________________________________________________\n";
+#endif
     return 0;
 }
