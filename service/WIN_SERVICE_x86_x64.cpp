@@ -1,6 +1,22 @@
 #include <windows.h>
 #include<iostream>
+#include<winsvc.h>
 using namespace std;
+
+
+// SERVICE  LAUNCHPROTECTED TYPES SUPPORTED FOR ANTI-MALWARE PROTECTION
+#define SERVICE_LAUNCH_PROTECTED_NONE                    0
+#define SERVICE_LAUNCH_PROTECTED_WINDOWS                 1
+#define SERVICE_LAUNCH_PROTECTED_WINDOWS_LIGHT           2
+#define SERVICE_LAUNCH_PROTECTED_ANTIMALWARE_LIGHT       3
+
+#define SERVICE_CONFIG_LAUNCH_PROTECTED                  12
+
+typedef struct _SERVICE_LAUNCH_PROTECTED_INFO {
+  DWORD dwLaunchProtected;
+} SERVICE_LAUNCH_PROTECTED_INFO, *PSERVICE_LAUNCH_PROTECTED_INFO;
+
+// SERVICE  LAUNCHPROTECTED TYPES SUPPORTED
 
 TCHAR *service_name = LPTSTR("cLp 0.1");
 SERVICE_DESCRIPTION sd;
@@ -9,10 +25,54 @@ SERVICE_STATUS Service_Status;
 SERVICE_STATUS_HANDLE Service_Status_Handle = 0;
 HANDLE Stop_Service_Event = 0;
 //CREATE SERVICE SC -Manager database
-void Create_Service()
+int Create_Service()
 {
+    //SERVICE ANTI-MALWARE PROTECTION
+    SERVICE_LAUNCH_PROTECTED_INFO Info;
+    Info.dwLaunchProtected = SERVICE_LAUNCH_PROTECTED_ANTIMALWARE_LIGHT;
+    //SERVICE ANTI-MALWARE PROTECTION
+
+
     SC_HANDLE Open_Control_Manager=NULL;
     SC_HANDLE service=NULL;
+
+
+
+//makecert.exe -a SHA256 -r -pe -ss my -n "CN=TestSrv" -eku 1.3.6.1.5.5.7.3.3 TestSrv.cer
+//makecert.exe -a SHA256 -r -pe -ss my -n "CN=TestElam" -eku 1.3.6.1.4.1.311.61.4.1,1.3.6.1.5.5.7.3.3 TestElam.cer
+
+
+//*.sys file 
+/*
+MicrosoftElamCertificateInfo MSElamCertInfoID
+{
+1, // count of entries, number of maximum entries allowed is 3
+L"F84AD274007D589BA3416CC800F3632D9FC1CEF115E81F51C2841098E1E90D5C\0", // certmgr.exe /v path\to\user\binary.exe
+0x800C, // the user binary is signed with the sha256 file hash algorith (like the driver binary).
+L"\0", //No EKU other then code signing EKU is present in the certificate used to sign the user binary.
+}
+
+The user binary is signed with the following command (Post-build):
+
+"C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe" sign /fd SHA256 /a /v /ph /sha1 6EAE19B1271E74E937D21DB886308F9F09816114 "$(TargetDir)$(TargetFileName)"
+
+all procedures before protection of the service
+*/
+
+
+/*
+HANDLE FileHandle = NULL;
+
+FileHandle = CreateFile(L"C:\\Windows\\System32\\drivers\\elamsample.sys", FILE_READ_DATA,FILE_SHARE_READ,NULL,OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,NULL);
+
+if (InstallElamCertificateInfo(FileHandle) == FALSE)
+{
+    std::cout<<"cant install cert"<<GetLastError();
+    return 0;
+}
+*/
+
+
     Open_Control_Manager = OpenSCManager(
         NULL, //MACHINE NAME
         NULL, //DATABASE NAME
@@ -27,6 +87,15 @@ void Create_Service()
                                               SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS,
                                               SERVICE_AUTO_START |SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path,
                                               0, 0, 0, 0, 0);
+
+
+            if (ChangeServiceConfig2(service,
+                         SERVICE_CONFIG_LAUNCH_PROTECTED,
+                         &Info) == FALSE)
+            {
+            std::cout<<"ChangeServiceConfig error: "<<GetLastError();
+            }
+
             /*
             CreateService()
             SERVICE_DEMAND_START A service started by the service control manager when a process calls the StartService function.
@@ -964,7 +1033,7 @@ void Service_Init(DWORD dwArgc, LPTSTR *lpArgv)
     {
         //WAIT FOR SIGNAL
         WaitForSingleObject(Stop_Service_Event,INFINITE);
-
+        
 
         ReportServiceStatus(SERVICE_STOPPED,NO_ERROR,0);
     }
