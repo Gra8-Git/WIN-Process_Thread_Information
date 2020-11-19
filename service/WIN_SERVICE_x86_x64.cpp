@@ -88,14 +88,14 @@ if (InstallElamCertificateInfo(FileHandle) == FALSE)
                                               SERVICE_AUTO_START |SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path,
                                               0, 0, 0, 0, 0);
 
-
+            /*
             if (ChangeServiceConfig2(service,
                          SERVICE_CONFIG_LAUNCH_PROTECTED,
                          &Info) == FALSE)
             {
             std::cout<<"ChangeServiceConfig error: "<<GetLastError();
             }
-
+            */
             /*
             CreateService()
             SERVICE_DEMAND_START A service started by the service control manager when a process calls the StartService function.
