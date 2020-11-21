@@ -1,21 +1,17 @@
-#ifndef UNICODE
-#define UNICODE
-#define UNICODE_WAS_UNDEFINED
-#endif
 #include "main.h"
 #include <Windows.h>
 #include <iostream>
 #include <sddl.h>
 #include <tchar.h>
+#include <tlhelp32.h>
 #include <string.h>
-#ifdef UNICODE_WAS_UNDEFINED
-#undef UNICODE
-#endif
+#include <thread>
+
 
 typedef PVOID Privvalue;
 typedef ULONG priv_ULONG;
 typedef PULONG P_priv_ULONG;
-
+#define  STRLENGTH   2000
 #define NT_QUERY_INFORMATION_PROCESS_NAME "NtQueryInformationProcess"
 typedef int (*FN_NtQueryInformationProcess)(HANDLE, int, PVOID, priv_ULONG, P_priv_ULONG);
 
@@ -90,7 +86,7 @@ _PROCESS_BASIC_INFORMATION64 readPibmemory64(HANDLE hprocess)
     _PROCESS_BASIC_INFORMATION64 pbi64{0};
     SIZE_T *dwBytesRead = NULL;
 
-    ntdll = LoadLibrary(L"ntdll.dll"); //load liberary and get hInstance to get function
+    ntdll = LoadLibrary(_T("ntdll.dll")); //load liberary and get hInstance to get function
     if (ntdll == NULL)
     {
         std::cout << "Unable to load ntdll\n";
@@ -120,7 +116,7 @@ _PROCESS_BASIC_INFORMATION readPibmemory32(HANDLE hprocess)
     _PROCESS_BASIC_INFORMATION pbi{0};
     SIZE_T *dwBytesRead = NULL;
 
-    ntdll = LoadLibrary(L"ntdll.dll"); //load liberary and get hInstance to get function
+    ntdll = LoadLibrary(_T("ntdll.dll")); //load liberary and get hInstance to get function
     if (ntdll == NULL)
     {
         std::cout << "Unable to load ntdll\n";
@@ -201,36 +197,93 @@ WCHAR *readRTLcommandLine(HANDLE hprocess, UNICODE_STRING commandLine)
     return commandLineContents;
 }
 
-int main(void)
+std::string WCHAR_to_String(WCHAR *wch)
 {
-    HANDLE pToken = NULL;
-    HANDLE hprocess;
-    PVOID rtlUserProcParamsAddress;
-    PVOID BeingDebugged;
-    UNICODE_STRING commandLine;
-    WCHAR *commandLineContents;
+    std::string str;
+    //convert from WCHAR
+    char  ch[STRLENGTH];
+    memset(ch, '\0', STRLENGTH);
+    wcstombs(ch, wch, 1000);
+    str=ch;
+    return str;
+    //convert from WCHAR
+}
 
-    PEB peb;
+
+void Processid_CommandLine_PEB_PBI( )
+{
+  HANDLE hProcessSnap={0};
+  HANDLE hProcess={0};
+  PROCESSENTRY32 pe32={0};
+  DWORD dwPriorityClass={0};
+
+  std::string spid={0};
+  std::string spnamex={0};
+  std::string spuac={0};
+  std::string spdebug ={0};
+  // Take a snapshot of all processes in the system.
+  hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
+  if( hProcessSnap == INVALID_HANDLE_VALUE)
+  {
+    std::cout<<"CreateToolhelp32Snapshot (of processes)";\
+    //return( FALSE );
+  }
+
+  // Set the size of the structure before using it.
+  pe32.dwSize = sizeof( PROCESSENTRY32 );
+
+  // Retrieve information about the first process,
+  // and exit if unsuccessful
+  if( !Process32First( hProcessSnap, &pe32 ) )
+  {
+    std::cout<<"Process32First";// show cause of failure
+    CloseHandle( hProcessSnap );          // clean the snapshot object
+   // return( FALSE );
+  }
+
+  // Now walk the snapshot of processes, and
+  // display information about each process in turn
+  do
+  {
+    
+    
+    
+    
+
+
+    HANDLE pToken = NULL;
+    HANDLE hprocess = NULL;
+    PVOID rtlUserProcParamsAddress={0};
+    PVOID BeingDebugged={0};
+    UNICODE_STRING commandLine={0};
+
+    WCHAR *commandLineContents={0};
+    std::string commandlinestr={0};
+    
+    PEB peb={0};
+
     //process id to enable external debug mode
-    int PID = 5712;
+    int PID = pe32.th32ProcessID;
+    spid=std::to_string(PID);
+
     hprocess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, PID);
 
     if (IsProcessUAC(hprocess) == TRUE)
     {
-        std::cout << "\t\tProcess Elevated\n";
+        spuac= "TRUE";
     }
     else
     {
-        std::cout << "\t\tProcess not elevated\n";
+        spuac="FALSE";
     }
     if (!EnableWindowsPrivilege(TRUE, hprocess))
     {
-        std::cout << "\t\tNot  Debugged!\n\n";
-        return 1;
+        spdebug="FALSE";
+        
     }
     else
     {
-        std::cout << "\t\tSE_DEBUG_NAME: privilages enabled\n\n";
+        spdebug="TRUE";
     }
 #ifdef _WIN64
     _PROCESS_BASIC_INFORMATION64 pbi64 = readPibmemory64(hprocess);
@@ -238,23 +291,11 @@ int main(void)
     rtlUserProcParamsAddress = readRTLUserProcessParam(hprocess, pbi64.PebBaseAddress);  
     commandLine = readRTLcommand(hprocess, rtlUserProcParamsAddress);
     commandLineContents = readRTLcommandLine(hprocess, commandLine);
-
-    std::wcout << "Command Line: " << commandLineContents << "\n";
-    std::cout << "\n___________________________________________________________\n";
-    std::cout << "\t\tPROCESS BASIC INFORMATION  x64 :\n";
-    std::cout << "pbi PEBBASEADDRESS :" << pbi64.PebBaseAddress << "\n";
-    std::cout << "pbi UNIQUEPROCESSID :" << pbi64.uUniqueProcessId << "\n";
-    std::cout << "_____________________________________________________________\n";
-    std::cout << "\t\tProcess PEB structure \n";
-    if (peb.BeingDebugged == TRUE)
-    {
-        std::cout << "PEB Process debugged: ture\n";
-    }
-    else
-    {
-        std::cout << "PEB Process debugged: false\n";
-    }
-    std::cout << "_____________________________________________________________\n";
+    commandlinestr=WCHAR_to_String(commandLineContents);
+     
+   spnamex = "{ \"Process_UAC\" : \""+ spuac  +"\","+"\"SE_DEBUG_NAME\" : \""+spdebug+"\"," +"{\"Process_ID\" : \""+spid+"\", \"Process_name\" : \"" +(char*) pe32.szExeFile+"\", \"Command_line\" : \""+commandlinestr+"\"}";
+   std::cout<<spnamex;
+    
 
 #else
     _PROCESS_BASIC_INFORMATION pbi = readPibmemory32(hprocess);
@@ -263,22 +304,27 @@ int main(void)
 
     commandLine = readRTLcommand(hprocess, rtlUserProcParamsAddress);
     commandLineContents = readRTLcommandLine(hprocess, commandLine);
-    std::wcout << "Command Line: " << commandLineContents << "\n";
-    std::cout << "\n___________________________________________________________\n";
-    std::cout << "\t\tPROCESS BASIC INFORMATION  x64 :\n";
-    std::cout << "pbi PEBBASEADDRESS :" << pbi.PebBaseAddress << "\n";
-    std::cout << "pbi UNIQUEPROCESSID :" << pbi.uUniqueProcessId << "\n";
-    std::cout << "_____________________________________________________________\n";
-    std::cout << "\t\tProcess PEB structure \n";
-    if (peb.BeingDebugged == TRUE)
-    {
-        std::cout << "PEB Process debugged: ture\n";
-    }
-    else
-    {
-        std::cout << "PEB Process debugged: false\n";
-    }
-    std::cout << "_____________________________________________________________\n";
+   commandlinestr=WCHAR_to_String(commandLineContents);
+     
+   spnamex = "{\"Process_ID\" : \""+spid+"\", \"Process_name\" : \"" +(char*) pe32.szExeFile+"\", \"Command_line\" : \""+commandlinestr+"\"}";
+   std::cout<<spnamex;
 #endif
+    
+
+    // List the modules and threads associated with this process
+    //ListProcessModules( pe32.th32ProcessID );
+    //ListProcessThreads( pe32.th32ProcessID );
+  } while( Process32Next( hProcessSnap, &pe32 ) );
+
+  CloseHandle( hProcessSnap );
+ // return( TRUE );
+}
+
+
+
+int main(void)
+{
+std::thread t1{Processid_CommandLine_PEB_PBI};
+t1.join();
     return 0;
 }
