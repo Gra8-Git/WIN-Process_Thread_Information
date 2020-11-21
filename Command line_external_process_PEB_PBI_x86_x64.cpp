@@ -281,7 +281,7 @@ void Processid_CommandLine_PEB_PBI( )
     commandLineContents = readRTLcommandLine(hprocess, commandLine);
     commandlinestr=WCHAR_to_String(commandLineContents);
      
-   spnamex = "{ \"Process_UAC\" : \""+ spuac  +"\","+"\"SE_DEBUG_NAME\" : \""+spdebug+"\"," +"{\"Process_ID\" : \""+spid+"\", \"Process_name\" : \"" +(char*) pe32.szExeFile+"\", \"Command_line\" : \""+commandlinestr+"\"}";
+    spnamex = "{ \"Process_UAC\" : \""+ spuac  +"\","+"{\"Process_ID\" : \""+spid+"\", \"Process_name\" : \"" +(char*) pe32.szExeFile+"\", \"Command_line\" : \""+commandlinestr+"\"}\n";
    std::cout<<spnamex;
     
 
