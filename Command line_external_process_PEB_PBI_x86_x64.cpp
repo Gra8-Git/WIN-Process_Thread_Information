@@ -200,13 +200,11 @@ WCHAR *readRTLcommandLine(HANDLE hprocess, UNICODE_STRING commandLine)
 std::string WCHAR_to_String(WCHAR *wch)
 {
     std::string str;
-    //convert from WCHAR
     char  ch[STRLENGTH];
     memset(ch, '\0', STRLENGTH);
     wcstombs(ch, wch, 1000);
     str=ch;
     return str;
-    //convert from WCHAR
 }
 
 
@@ -221,35 +219,27 @@ void Processid_CommandLine_PEB_PBI( )
   std::string spnamex={0};
   std::string spuac={0};
   std::string spdebug ={0};
-  // Take a snapshot of all processes in the system.
+  
   hProcessSnap = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
   if( hProcessSnap == INVALID_HANDLE_VALUE)
   {
     std::cout<<"CreateToolhelp32Snapshot (of processes)";\
-    //return( FALSE );
+  
   }
 
-  // Set the size of the structure before using it.
+  
   pe32.dwSize = sizeof( PROCESSENTRY32 );
 
-  // Retrieve information about the first process,
-  // and exit if unsuccessful
   if( !Process32First( hProcessSnap, &pe32 ) )
   {
-    std::cout<<"Process32First";// show cause of failure
-    CloseHandle( hProcessSnap );          // clean the snapshot object
-   // return( FALSE );
+    std::cout<<"Process32First";
+    CloseHandle( hProcessSnap );
   }
 
-  // Now walk the snapshot of processes, and
-  // display information about each process in turn
   do
   {
     
     
-    
-    
-
 
     HANDLE pToken = NULL;
     HANDLE hprocess = NULL;
@@ -261,8 +251,6 @@ void Processid_CommandLine_PEB_PBI( )
     std::string commandlinestr={0};
     
     PEB peb={0};
-
-    //process id to enable external debug mode
     int PID = pe32.th32ProcessID;
     spid=std::to_string(PID);
 
@@ -311,9 +299,6 @@ void Processid_CommandLine_PEB_PBI( )
 #endif
     
 
-    // List the modules and threads associated with this process
-    //ListProcessModules( pe32.th32ProcessID );
-    //ListProcessThreads( pe32.th32ProcessID );
   } while( Process32Next( hProcessSnap, &pe32 ) );
 
   CloseHandle( hProcessSnap );
