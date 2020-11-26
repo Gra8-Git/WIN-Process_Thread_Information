@@ -9,7 +9,7 @@ std::string WCHAR_to_String(WCHAR *wch)
 {
     std::string str;
     //convert from WCHAR
-    char  ch[SLENGTH];
+    char  ch[slength];
     memset(ch, '\0', slength);
     wcstombs(ch, wch, 2000);
     str=ch;
