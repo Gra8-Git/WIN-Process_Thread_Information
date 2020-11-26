@@ -4,15 +4,16 @@
 #include<iostream>
 #include<string>
 #include<vector>
-
+#define slength 2000
 std::string WCHAR_to_String(WCHAR *wch)
 {
     std::string str;
     //convert from WCHAR
     char  ch[SLENGTH];
-    memset(ch, '\0', SLENGTH);
+    memset(ch, '\0', slength);
     wcstombs(ch, wch, 2000);
     str=ch;
+    //return line without wchar memory junk
     return str;
 }
 
