@@ -47,14 +47,14 @@ int Create_Service()
 MicrosoftElamCertificateInfo MSElamCertInfoID
 {
 1, // count of entries, number of maximum entries allowed is 3
-L"F84AD274007D589BA3416CC800F3632D9FC1CEF115E81F51C2841098E1E90D5C\0", // certmgr.exe /v path\to\user\binary.exe
+L"hash sha256\0", // certmgr.exe /v path\to\user\binary.exe
 0x800C, // the user binary is signed with the sha256 file hash algorith (like the driver binary).
 L"\0", //No EKU other then code signing EKU is present in the certificate used to sign the user binary.
 }
 
 The user binary is signed with the following command (Post-build):
 
-"C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe" sign /fd SHA256 /a /v /ph /sha1 6EAE19B1271E74E937D21DB886308F9F09816114 "$(TargetDir)$(TargetFileName)"
+"C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe" sign /fd SHA256 /a /v /ph /sha1 hash "$(TargetDir)$(TargetFileName)"
 
 all procedures before protection of the service
 */
