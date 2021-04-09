@@ -83,6 +83,19 @@ if (InstallElamCertificateInfo(FileHandle) == FALSE)
         TCHAR path[_MAX_PATH + 1];
         if (GetModuleFileName(0, path, sizeof(path) / sizeof(path[0])) > 0)     //Get path of the application to create on his base service 
         {
+          /*
+           hService = CreateService(hSCManager, "Driver name kernel", 
+                                 "Driver name kernel", 
+                                  SERVICE_START | DELETE | SERVICE_STOP, 
+                                  SERVICE_KERNEL_DRIVER,
+                                  SERVICE_DEMAND_START, 
+                                  SERVICE_ERROR_IGNORE, 
+                                  "C:\\example.sys", 
+                                  NULL, NULL, NULL, NULL, NULL);
+          */
+          
+          
+          
             service = CreateService(Open_Control_Manager, service_name, service_name,
                                               SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS,
                                               SERVICE_AUTO_START |SERVICE_DEMAND_START, SERVICE_ERROR_NORMAL, path,
