@@ -151,7 +151,8 @@ int main()
   LPCSTR GetString;
     TCHAR a[]="C:\\WINDOWS\\system32\\cmd.exe ";
   GetString=a;
-MD5(GetString);
-
+    MD5(GetString,CALG_MD5,MD5LEN);
+   MD5(GetString,CALG_SHA1,SHA1LEN);
+    MD5(GetString,CALG_SHA_256,SHA256LEN);
 return 0;
 }
