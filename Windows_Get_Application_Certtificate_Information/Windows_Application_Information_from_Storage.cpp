@@ -8,7 +8,7 @@
  
  using namespace std;
 
- char* get_pe_cert(LPCSTR PE)
+ TCHAR* get_pe_cert(LPCSTR PE)
 {
      
  DWORD type = CERT_X500_NAME_STR;
@@ -47,13 +47,13 @@
                     cert = (LPWIN_CERTIFICATE) LocalAlloc(0, certLen);
                     status = ImageGetCertificateData(file, indexes[i], cert, &certLen);
                     if (!status)
-                        return (char*)"ImageGetCertificateData failed on index ";
+                        return (char*)"ImageGetCertificateData failed on index ";//, indexes[i], GetLastError());
                     else
                     {
                         CRYPT_DATA_BLOB p7Data;
                         p7Data.cbData = certLen - sizeof(DWORD) - sizeof(WORD) - sizeof(WORD);
                         p7Data.pbData = cert->bCertificate;
-                        store = CertOpenStore(CERT_STORE_PROV_PKCS7, X509_ASN_ENCODING|PKCS_7_ASN_ENCODING, NULL, 0, &p7Data);
+                        store = CertOpenStore(CERT_STORE_PROV_PKCS7, X509_ASN_ENCODING|PKCS_7_ASN_ENCODING, 0, 0, &p7Data);
                         if (store)
                         {
                             int count = 0;
@@ -78,17 +78,20 @@
         if (count)
     {
         char *subject = (char *) LocalAlloc(0, count * sizeof(char));
-        
         count = CertGetNameString(certContext,CERT_NAME_RDN_TYPE,0,&type,subject,count);
        
-           
+            //printf("%d - Certificate Subject: %s\n", count, subject);
 
 
 
-        LocalFree(subject);  
-               return subject;
+        CloseHandle(file);
+        LocalFree(subject);
+        LocalFree(cert); 
+         LocalFree(keyUsage.rgpszUsageIdentifier); 
+        return subject;
+               
    }   
-                             
+                              
                                 }
                        
                             } while (certContext);
@@ -110,9 +113,8 @@
         }
         CloseHandle(file);
     }
-    return 0;
+    return (TCHAR*)"NeN";
 }
-
 
 
 int main()
