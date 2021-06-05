@@ -119,5 +119,5 @@ int main()
 {
 
    printf("File Certificate information :%s",get_pe_cert( "C:\\Program Files\\Avast Software\\Avast\\AvastUI.exe"));
-    return 0;
+  return  (TCHAR*)"NeN";
 }
