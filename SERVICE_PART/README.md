@@ -1,7 +1,7 @@
 SERVICE_PART_TEST
 
 command line :
-start / stop / install / uninstall for bouth services 
+start / stop / install / uninstall for both services 
 
 
 bcdedit  /set  testsigning  on 
